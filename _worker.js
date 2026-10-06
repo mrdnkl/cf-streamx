@@ -2,9 +2,9 @@
 // CONFIGURATION & CONSTANTS
 // ==========================================
 const DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 Minutes
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 Minutes Cache
 
-// Global memory cache
+// Global memory cache for provider M3U content
 const providerCaches = {};
 
 export default {
@@ -12,7 +12,7 @@ export default {
     const url = new URL(request.url);
     const workerDomain = url.origin;
 
-    // 1. Build dynamic providers array from environment variables (env.P1, env.P2, env.P3)
+    // 1. Build provider array from environment variables (env.P1, env.P2, env.P3...)
     const providers = buildProvidersFromEnv(env);
 
     if (providers.length === 0) {
@@ -20,7 +20,36 @@ export default {
     }
 
     // ==========================================
-    // ROUTE 1: /playlist.m3u (Namespaced Playlist)
+    // ROUTE 1: Split Playlist by Provider (/playlist_p1.m3u, /playlist_p2.m3u)
+    // ==========================================
+    const splitMatch = url.pathname.match(/^\/playlist_([a-zA-Z0-9]+)\.m3u$/);
+
+    if (splitMatch) {
+      const requestedPrefix = splitMatch[1].toLowerCase(); // e.g., "p1", "p2"
+      const targetProvider = providers.find(p => p.prefix === requestedPrefix);
+
+      if (!targetProvider) {
+        return new Response(`Error: Provider playlist '${requestedPrefix}' not found or not configured in env.`, { status: 404 });
+      }
+
+      try {
+        const singlePlaylist = await buildSingleProviderPlaylist(workerDomain, targetProvider);
+
+        return new Response(singlePlaylist, {
+          headers: {
+            "Content-Type": "audio/x-mpegurl",
+            "Content-Disposition": `inline; filename="playlist_${requestedPrefix}.m3u"`,
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "no-cache"
+          }
+        });
+      } catch (err) {
+        return new Response(`Worker Error: ${err.message}`, { status: 500 });
+      }
+    }
+
+    // ==========================================
+    // ROUTE 2: /playlist.m3u (Merged All-in-One Playlist)
     // ==========================================
     if (url.pathname === "/playlist.m3u") {
       try {
@@ -40,7 +69,7 @@ export default {
     }
 
     // ==========================================
-    // ROUTE 2: /live/stream?id=p1_101.m3u8
+    // ROUTE 3: /live/stream?id=p1_101.m3u8 (Stream Proxy)
     // ==========================================
     if (url.pathname === "/live/stream") {
       const rawStreamId = url.searchParams.get("id");
@@ -87,7 +116,7 @@ export default {
       }
     }
 
-    return new Response("M3U8 Worker with Environment Variable configuration active.", { status: 200 });
+    return new Response("M3U8 Worker Active. Endpoints: /playlist_p1.m3u, /playlist_p2.m3u, /playlist.m3u", { status: 200 });
   }
 };
 
@@ -96,12 +125,11 @@ export default {
 // ==========================================
 
 /**
- * Reads env object and dynamically extracts env.P1, env.P2, env.P3...
+ * Builds array of providers from env.P1, env.P2, env.P3...
  */
 function buildProvidersFromEnv(env) {
   const providers = [];
 
-  // Loop through common provider keys (P1 to P10)
   for (let i = 1; i <= 10; i++) {
     const key = `P${i}`;
     const url = env[key];
@@ -121,14 +149,80 @@ function buildProvidersFromEnv(env) {
 }
 
 /**
- * Strips file extension suffixes
+ * Generates playlist for a SINGLE provider (e.g. /playlist_p1.m3u)
+ */
+async function buildSingleProviderPlaylist(workerDomain, provider) {
+  let linesOutput = ["#EXTM3U"];
+
+  const rawM3u = await getOrFetchProviderM3U(provider);
+  if (!rawM3u) return "#EXTM3U\n";
+
+  const lines = rawM3u.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    if (line.startsWith("#EXTM3U")) continue;
+
+    if (line.startsWith("http")) {
+      const streamId = extractStreamId(line);
+      if (streamId) {
+        linesOutput.push(`${workerDomain}/live/stream?id=${provider.prefix}_${streamId}.m3u8`);
+      } else {
+        linesOutput.push(line);
+      }
+    } else {
+      linesOutput.push(line);
+    }
+  }
+
+  return linesOutput.join("\n");
+}
+
+/**
+ * Generates combined playlist for ALL providers (/playlist.m3u)
+ */
+async function buildNamespacedPlaylist(workerDomain, providers) {
+  let combinedLines = ["#EXTM3U"];
+
+  for (const provider of providers) {
+    if (!provider.enabled) continue;
+
+    const rawM3u = await getOrFetchProviderM3U(provider);
+    if (!rawM3u) continue;
+
+    const lines = rawM3u.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      if (line.startsWith("#EXTM3U")) continue;
+
+      if (line.startsWith("http")) {
+        const streamId = extractStreamId(line);
+        if (streamId) {
+          combinedLines.push(`${workerDomain}/live/stream?id=${provider.prefix}_${streamId}.m3u8`);
+        } else {
+          combinedLines.push(line);
+        }
+      } else {
+        combinedLines.push(line);
+      }
+    }
+  }
+
+  return combinedLines.join("\n");
+}
+
+/**
+ * Strips file extension suffixes (.m3u8, .ts, etc.)
  */
 function sanitizeStreamId(idParam) {
   return idParam.replace(/\.(m3u8|ts|mpd|m3u)$/i, "");
 }
 
 /**
- * Splits namespaced ID string into prefix and raw ID
+ * Splits namespaced ID string into prefix and raw ID (e.g. "p1_101" -> { prefix: "p1", targetId: "101" })
  */
 function parseNamespacedId(fullId) {
   const match = fullId.match(/^([a-zA-Z0-9]+)_(.+)$/);
@@ -164,41 +258,6 @@ async function findStreamAcrossProviders(providers, streamId) {
     if (streamUrl) return streamUrl;
   }
   return null;
-}
-
-/**
- * Generates combined playlist with prefixed stream URLs
- */
-async function buildNamespacedPlaylist(workerDomain, providers) {
-  let combinedLines = ["#EXTM3U"];
-
-  for (const provider of providers) {
-    if (!provider.enabled) continue;
-
-    const rawM3u = await getOrFetchProviderM3U(provider);
-    if (!rawM3u) continue;
-
-    const lines = rawM3u.split("\n");
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-
-      if (line.startsWith("#EXTM3U")) continue;
-
-      if (line.startsWith("http")) {
-        const streamId = extractStreamId(line);
-        if (streamId) {
-          combinedLines.push(`${workerDomain}/live/stream?id=${provider.prefix}_${streamId}.m3u8`);
-        } else {
-          combinedLines.push(line);
-        }
-      } else {
-        combinedLines.push(line);
-      }
-    }
-  }
-
-  return combinedLines.join("\n");
 }
 
 /**
@@ -304,4 +363,4 @@ function convertToM3U8Url(rawUrl) {
   } catch (e) {
     return rawUrl;
   }
-}
+  }
