@@ -40,9 +40,9 @@ export default {
     }
 
     // ==========================================
-    // ROUTE 2: /live/stream.m3u8?id=p1_101.m3u8
+    // ROUTE 2: /live/stream?id=p1_101.m3u8
     // ==========================================
-    if (url.pathname === "/live/stream.m3u8") {
+    if (url.pathname === "/live/stream") {
       const rawStreamId = url.searchParams.get("id");
 
       if (!rawStreamId) {
@@ -188,7 +188,7 @@ async function buildNamespacedPlaylist(workerDomain, providers) {
       if (line.startsWith("http")) {
         const streamId = extractStreamId(line);
         if (streamId) {
-          combinedLines.push(`${workerDomain}/live/stream.m3u8?id=${provider.prefix}_${streamId}.m3u8`);
+          combinedLines.push(`${workerDomain}/live/stream?id=${provider.prefix}_${streamId}.m3u8`);
         } else {
           combinedLines.push(line);
         }
