@@ -1,5 +1,5 @@
 # cf-streamx
-Build your own live m3u8 playlist with cloudflare worker and used iptv provider service as source (support:stalker portal, xtream code & ottclub) and used github private repository as hosted file for provider playlist.
+Build your own live m3u8 playlist with cloudflare worker and used iptv provider service as source (support:stalker portal, xtream code & ottclub) and used github private repository as hosted file for provider playlist. (For public repository worker check in folder public) 
 
 > What's need? 
 - GH_TOKEN : To access private repository file source, so created and generated token by your own at developer settings (e, g,: ghp_xdfvvghgfdfhjjnnsdf) 
