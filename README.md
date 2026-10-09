@@ -4,7 +4,7 @@ Build your own live m3u8 playlist with cloudflare worker and used iptv provider 
 > What's need? 
 - GH_TOKEN : To access private repository file source, so created and generated token by your own at developer settings (e, g,: ghp_xdfvvghgfdfhjjnnsdf) 
 - P1, P2.. : Playlist as source
-- Api_Key : Just leave it to make playlist result in public download
+- API_KEY : Just leave it to make playlist result in public download
 
 > Deployment, 
 - Forked this repository
@@ -21,6 +21,6 @@ Test your cloudflare worker playlist download!
 > For single playlist download (P1, P2, etc) 
 - cf-streamx.<your-own>.worker.dev/playlist_P1.m3u
 
-> If you need private download playlist just add new variable for Api_Key
+> If you need private download playlist just add new variable for API_KEY
 
-cf-streamx.<your-own>.worker.dev/playlist_P1.m3u?
+cf-streamx.<your-own>.worker.dev/playlist_P1.m3u?key=whatever-your-API_KEY-setup
