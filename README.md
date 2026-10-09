@@ -3,7 +3,7 @@ Build your own live m3u8 playlist with cloudflare worker and used iptv provider 
 
 > What's need? 
 - GH_TOKEN : To access private repository file source, so created and generated token by your own at developer settings (e, g,: ghp_xdfvvghgfdfhjjnnsdf) 
-- P1, P2.. : Playlist as source.(Need playlist source [Check](https://github.com/mrdnkl/stalker-xtream-m3u) 
+- P1, P2.. : Playlist as source.(Need playlist source [CHECK](https://github.com/mrdnkl/stalker-xtream-m3u) how to grab it) 
 - API_KEY : Just leave it to make playlist result in public download
 
 > Deployment, 
