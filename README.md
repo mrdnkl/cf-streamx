@@ -17,10 +17,27 @@ Test your cloudflare worker playlist download!
 
 > For all merged playlist download (P1, P2, etc) 
 - cf-streamx.<your-own>.worker.dev/playlist.m3u
+- 
 
 > For single playlist download (P1, P2, etc) 
-- cf-streamx.<your-own>.worker.dev/playlist_P1.m3u
+- cf-streamx.<your-own>.worker.dev/playlist_p1.m3u
+- 
 
 > If you need private download playlist just add new variable for API_KEY
 
-cf-streamx.<your-own>.worker.dev/playlist_P1.m3u?key=whatever-your-API_KEY-setup
+cf-streamx.<your-own>.worker.dev/playlist_p1.m3u?key=whatever-your-API_KEY-setup
+
+
+> Live m3u8 playlist.m3u output
+
+#EXTM3U<br/>
+#EXTINF:-1 tvg-id="" tvg-name="CH P1" tvg-logo="http://stalker/ch1.png" group-title="Stalker", CH P1
+<br>https://cf-streamx.<yourown>.workers.dev/live/stream?id=p1_111111.m3u8</br>
+
+
+#EXTINF:-1 tvg-id="" tvg-name="CH P2" tvg-logo="https://xtream/ch2.png" group-title="Xtream", CH P2
+<br>https://cf-streamx.<yourown>.workers.dev/live/stream?id=p2_222222.m3u8</br>
+
+
+#EXTINF:-1 tvg-id="" tvg-name="CH P3" tvg-logo="http://ottclub/ch3.png" group-title="Ottclub", CH P3
+<br>https://cf-streamx.<yourown>.workers.dev/live/stream?id=p3_33333.m3u8</br>
