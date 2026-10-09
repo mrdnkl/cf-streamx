@@ -124,7 +124,6 @@ export default {
       }
     }
 
-   // return new Response("Active!.", { status: 200 });
     return new Response(await nginx(), {
 				headers: {
 					'Content-Type': 'text/html; charset=UTF-8',
